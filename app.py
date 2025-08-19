@@ -49,13 +49,13 @@ with tab1:
         with col1:
             st.markdown("#### Character Stats")
             base_level = st.number_input("Base Level", min_value=1, max_value=200, value=100)
-            job_level = st.number_input("Job Level", min_value=1, max_value=70, value=40)
+            job_level = st.number_input("Job Level", min_value=1, max_value=90, value=40)
             
             # Main stats
-            str_stat = st.number_input("STR", min_value=1, max_value=200, value=100)
-            agi_stat = st.number_input("AGI", min_value=1, max_value=200, value=50)
-            vit_stat = st.number_input("VIT", min_value=1, max_value=200, value=50)
-            dex_stat = st.number_input("DEX", min_value=1, max_value=200, value=50)
+            str_stat = st.number_input("STR", min_value=1, max_value=500, value=100)
+            agi_stat = st.number_input("AGI", min_value=1, max_value=500, value=50)
+            vit_stat = st.number_input("VIT", min_value=1, max_value=500, value=50)
+            dex_stat = st.number_input("DEX", min_value=1, max_value=500, value=50)
             
             # Basic attack values
             weapon_atk = st.number_input("Weapon Attack", min_value=0, value=1000)
