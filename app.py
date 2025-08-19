@@ -3,7 +3,7 @@
                                         help="Final damage increase from gear/cards/runes")
         
         # Equipment Memory System
-        equipment_memory_bonus = 0
+        total_memory_atk = 0
         if st.checkbox("🧠 Include Equipment Memory System", help="New system from Ghost Palace - adds significant ATK/MATK bonuses"):
             st.markdown("#### 🧠 Equipment Memory Configuration")
             
@@ -13,9 +13,6 @@
                 st.markdown("**Memory Quality & Levels**")
                 # Equipment Memory slots (6 total: Weapon, Armor, Cloak, Boots, Accessory 1, Accessory 2)
                 memory_slots = ["Weapon", "Armor", "Cloak", "Boots", "Accessory 1", "Accessory 2"]
-                
-                total_memory_atk = 0
-                total_memory_matk = 0
                 
                 for slot in memory_slots:
                     memory_quality = st.selectbox(f"{slot} Memory", 
@@ -94,9 +91,7 @@
                 - Then upgrade to Lv.30 one by one
                 - Green/Blue memories refund only 80% when decomposed
                 - Weekly Ghost Palace = ~30 Memory Afterglow
-                """)
-        else:
-            total_memory_atk = 0        # Show advanced mechanics info
+                """)        # Show advanced mechanics info
         if "advanced_mechanics" in class_info:
             with st.expander(f"🔍 Advanced {character_class.split('/')[0]} Mechanics"):
                 for mechanic, description in class_info["advanced_mechanics"].items():
