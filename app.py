@@ -1,4 +1,108 @@
-import streamlit as st
+# Universal modifiers
+        damage_increase = st.number_input("Damage Increase (%)", min_value=0.0, max_value=300.0, value=80.0, step=5.0, 
+                                        help="Final damage increase from gear/cards/runes")
+        
+        # Equipment Memory System
+        equipment_memory_bonus = 0
+        if st.checkbox("🧠 Include Equipment Memory System", help="New system from Ghost Palace - adds significant ATK/MATK bonuses"):
+            st.markdown("#### 🧠 Equipment Memory Configuration")
+            
+            col_mem1, col_mem2 = st.columns(2)
+            
+            with col_mem1:
+                st.markdown("**Memory Quality & Levels**")
+                # Equipment Memory slots (6 total: Weapon, Armor, Cloak, Boots, Accessory 1, Accessory 2)
+                memory_slots = ["Weapon", "Armor", "Cloak", "Boots", "Accessory 1", "Accessory 2"]
+                
+                total_memory_atk = 0
+                total_memory_matk = 0
+                
+                for slot in memory_slots:
+                    memory_quality = st.selectbox(f"{slot} Memory", 
+                        [("None", 0), ("Green", 1), ("Blue", 2), ("Purple", 3)], 
+                        index=0, format_func=lambda x: x[0], key=f"mem_{slot}")
+                    
+                    if memory_quality[1] > 0:
+                        max_level = {1: 10, 2: 20, 3: 30}[memory_quality[1]]  # Green: 10, Blue: 20, Purple: 30
+                        memory_level = st.number_input(f"{slot} Level", min_value=1, max_value=max_level, 
+                                                     value=min(10, max_level), key=f"level_{slot}")
+                        
+                        # Calculate memory bonuses (approximation based on guides)
+                        if damage_type == "Physical Damage":
+                            # Physical ATK bonus from memory
+                            if memory_quality[1] == 3:  # Purple
+                                slot_atk_bonus = memory_level * 15  # ~15 ATK per level for purple
+                            elif memory_quality[1] == 2:  # Blue  
+                                slot_atk_bonus = memory_level * 10  # ~10 ATK per level for blue
+                            else:  # Green
+                                slot_atk_bonus = memory_level * 5   # ~5 ATK per level for green
+                        else:
+                            # Magic ATK bonus from memory
+                            if memory_quality[1] == 3:  # Purple
+                                slot_atk_bonus = memory_level * 12  # ~12 MATK per level for purple
+                            elif memory_quality[1] == 2:  # Blue
+                                slot_atk_bonus = memory_level * 8   # ~8 MATK per level for blue  
+                            else:  # Green
+                                slot_atk_bonus = memory_level * 4   # ~4 MATK per level for green
+                        
+                        total_memory_atk += slot_atk_bonus
+                        
+                        # Display individual memory bonus
+                        st.text(f"└ +{slot_atk_bonus} {'ATK' if damage_type == 'Physical Damage' else 'MATK'}")
+            
+            with col_mem2:
+                st.markdown("**Memory Special Attributes**")
+                
+                # Special attributes unlocked at certain levels
+                memory_special_atk_percent = st.number_input("ATK/MATK % from Special Lines", 
+                    min_value=0.0, max_value=50.0, value=0.0, step=1.0,
+                    help="Special attributes from Lv.10+ purple memories")
+                
+                memory_damage_increase = st.number_input("Damage Increase % from Memory", 
+                    min_value=0.0, max_value=30.0, value=0.0, step=1.0,
+                    help="Damage increase special attributes")
+                
+                memory_penetration = st.number_input("Penetration % from Memory", 
+                    min_value=0.0, max_value=20.0, value=0.0, step=1.0,
+                    help="Ignore DEF from special attributes")
+                
+                # Add memory bonuses to existing modifiers
+                if damage_type == "Physical Damage":
+                    atk_percent += memory_special_atk_percent
+                    total_atk += total_memory_atk
+                    ignore_def_general += memory_penetration
+                else:
+                    matk_percent += memory_special_atk_percent
+                    total_matk += total_memory_atk
+                    ignore_mdef_general += memory_penetration
+                    
+                damage_increase += memory_damage_increase
+                
+                # Display total memory bonuses
+                st.success(f"""
+                **Total Memory Bonuses:**
+                - +{total_memory_atk} {'ATK' if damage_type == 'Physical Damage' else 'MATK'} (Base)
+                - +{memory_special_atk_percent}% {'ATK' if damage_type == 'Physical Damage' else 'MATK'} (Special)
+                - +{memory_damage_increase}% Damage Increase
+                - +{memory_penetration}% Penetration
+                """)
+                
+                # Memory upgrade recommendations
+                st.info("""
+                **💡 Memory Tips:**
+                - Focus on 3x Purple Lv.10 first (unlocks special attributes)
+                - Then upgrade to Lv.30 one by one
+                - Green/Blue memories refund only 80% when decomposed
+                - Weekly Ghost Palace = ~30 Memory Afterglow
+                """)
+        else:
+            total_memory_atk = 0        # Show advanced mechanics info
+        if "advanced_mechanics" in class_info:
+            with st.expander(f"🔍 Advanced {character_class.split('/')[0]} Mechanics"):
+                for mechanic, description in class_info["advanced_mechanics"].items():
+                    if mechanic == "special_note":
+                        st.warning(f"**Special Note:** {description}")
+                    elseimport streamlit as st
 import pandas as pd
 import numpy as np
 import math
@@ -53,25 +157,178 @@ with st.expander("📋 ROM Handbook Universal Formula Reference"):
     ```
     """)
 
+# Advanced class stat requirements with detailed mechanics
+class_stats = {
+    "Knight/Lord Knight/Rune Knight": {
+        "main": "STR", "secondary": ["VIT", "DEX"], "tertiary": ["AGI"], 
+        "description": "STR for damage, VIT for HP/DEF, DEX for HIT",
+        "build_types": ["Pure STR DPS", "STR-VIT Tank", "STR-DEX Hybrid"],
+        "advanced_mechanics": {
+            "str_mechanics": "Every 10 STR = +20 ATK approximately",
+            "vit_mechanics": "Every 5 VIT = +1% damage reduction",
+            "dex_mechanics": "Every 10 DEX = +20 HIT"
+        }
+    },
+    "Assassin/Assassin Cross/Guillotine Cross": {
+        "main": "AGI", "secondary": ["STR", "LUK"], "tertiary": ["DEX"], 
+        "description": "AGI for ASPD/Crit, STR for damage, LUK for crit rate",
+        "build_types": ["AGI-Critical", "AGI-STR Hybrid", "Pure Critical (LUK)"],
+        "advanced_mechanics": {
+            "agi_mechanics": "Every 10 AGI = +4% ASPD, +2 Flee",
+            "luk_mechanics": "Every 10 LUK = +1% Critical Rate",
+            "str_mechanics": "STR affects base damage significantly"
+        }
+    },
+    "Hunter/Sniper/Ranger": {
+        "main": "DEX", "secondary": ["AGI", "INT"], "tertiary": ["STR"], 
+        "description": "DEX for damage/HIT, AGI for ASPD, INT for SP",
+        "build_types": ["Pure DEX ADL", "DEX-AGI ASPD", "DEX-INT Trapper"],
+        "advanced_mechanics": {
+            "dex_mechanics": "Primary damage stat for bows, affects accuracy",
+            "agi_mechanics": "ASPD for auto-attack builds",
+            "int_mechanics": "SP for trap skills and utility"
+        }
+    },
+    "Priest/High Priest/Archbishop": {
+        "main": "INT", "secondary": ["DEX", "VIT"], "tertiary": ["AGI"], 
+        "description": "INT for healing/damage, DEX for cast time, VIT for survival",
+        "build_types": ["Pure INT Battle", "INT-DEX Support", "INT-VIT Tank"],
+        "advanced_mechanics": {
+            "int_mechanics": "Every 10 INT = +20 MATK, +2% healing",
+            "dex_mechanics": "Reduces cast time significantly",
+            "vit_mechanics": "Survivability for battle priests"
+        }
+    },
+    "Wizard/High Wizard/Warlock/Sorcerer": {
+        "main": "INT", "secondary": ["DEX", "VIT"], "tertiary": ["AGI"], 
+        "description": "INT for magic damage, DEX for cast time, VIT for survival",
+        "build_types": ["Pure INT Glass Cannon", "INT-DEX Fast Cast", "INT-VIT Survivor"],
+        "advanced_mechanics": {
+            "int_mechanics": "Primary magic damage, every 10 INT = +20 MATK",
+            "dex_mechanics": "Critical for instant cast (150+ DEX recommended)",
+            "vit_mechanics": "HP for survival, reduces stun duration"
+        }
+    },
+    "Blacksmith/Whitesmith/Mechanic": {
+        "main": "STR", "secondary": ["DEX", "AGI", "LUK"], "tertiary": ["VIT"], 
+        "description": "🔧 COMPLEX: STR+DEX+AGI+LUK all affect damage through different mechanics",
+        "build_types": ["STR-DEX Hybrid", "STR-AGI Memory", "DEX-LUK Rune", "Balanced Multi-Stat"],
+        "advanced_mechanics": {
+            "str_mechanics": "Base physical damage for all skills",
+            "dex_mechanics": "🎯 DEX Runes: Every 10 DEX = +X ATK (varies by rune level)",
+            "agi_mechanics": "⚡ ASPD Memory: 360 ASPD = +3% Penetration, affects attack speed",
+            "luk_mechanics": "🍀 LUK Runes: Every 10 LUK = +X ATK (varies by rune level)",
+            "special_note": "⚠️ Mechanic uses ALL 4 STATS for optimal damage!"
+        }
+    },
+    "Crusader/Paladin/Royal Guard": {
+        "main": "STR", "secondary": ["VIT", "DEX"], "tertiary": ["INT"], 
+        "description": "STR for damage, VIT for tanking, DEX for HIT, INT for SP",
+        "build_types": ["STR-VIT Tank", "Pure VIT Defender", "STR-DEX Sacrifice"],
+        "advanced_mechanics": {
+            "str_mechanics": "Physical damage for offensive skills",
+            "vit_mechanics": "Primary tanking stat, affects HP and DEF",
+            "int_mechanics": "SP for skills like Heal and Sanctuary"
+        }
+    },
+    "Rogue/Stalker/Shadow Chaser": {
+        "main": "STR", "secondary": ["AGI", "DEX"], "tertiary": ["LUK"], 
+        "description": "STR for damage, AGI for ASPD, DEX for HIT, LUK for steal",
+        "build_types": ["STR-AGI Hybrid", "Pure STR DPS", "DEX-based Copy"],
+        "advanced_mechanics": {
+            "str_mechanics": "Primary damage stat",
+            "agi_mechanics": "ASPD and flee for survivability",
+            "dex_mechanics": "Accuracy and some skill requirements",
+            "luk_mechanics": "Affects steal rate and critical"
+        }
+    },
+    "Monk/Champion/Shura/Sura": {
+        "main": "STR", "secondary": ["AGI", "VIT"], "tertiary": ["DEX"], 
+        "description": "STR for damage, AGI for combo speed, VIT for HP",
+        "build_types": ["Pure STR Asura", "STR-AGI Combo", "STR-VIT Tanky"],
+        "advanced_mechanics": {
+            "str_mechanics": "Primary damage, critical for Asura Strike",
+            "agi_mechanics": "Combo attack speed and ASPD",
+            "vit_mechanics": "HP for survival and some skill requirements"
+        }
+    },
+    "Bard-Dancer/Clown-Gypsy/Minstrel-Wanderer": {
+        "main": "DEX", "secondary": ["AGI", "INT"], "tertiary": ["LUK"], 
+        "description": "DEX for bow damage, AGI for ASPD, INT for SP/songs",
+        "build_types": ["DEX-AGI ADL", "Pure DEX", "INT Support"],
+        "advanced_mechanics": {
+            "dex_mechanics": "Primary damage for bow skills",
+            "agi_mechanics": "ASPD for auto-attack builds",
+            "int_mechanics": "SP for songs and support skills"
+        }
+    },
+    "Taekwon/Star Gladiator/Soul Linker": {
+        "main": "STR", "secondary": ["AGI", "INT"], "tertiary": ["DEX"], 
+        "description": "STR for kick damage, AGI for ASPD, INT for linker skills",
+        "build_types": ["STR-AGI TKD", "Pure STR Star Glad", "INT Soul Linker"],
+        "advanced_mechanics": {
+            "str_mechanics": "Kick damage for TKD and Star Glad",
+            "agi_mechanics": "ASPD and positioning",
+            "int_mechanics": "Soul Linker skills and SP"
+        }
+    },
+    "Ninja/Kagerou/Oboro": {
+        "main": "STR", "secondary": ["INT", "AGI"], "tertiary": ["DEX"], 
+        "description": "STR for physical, INT for magic, AGI for ASPD",
+        "build_types": ["STR Physical", "INT Magic", "Hybrid STR-INT"],
+        "advanced_mechanics": {
+            "str_mechanics": "Physical ninja skills",
+            "int_mechanics": "Magic ninja skills and SP",
+            "agi_mechanics": "ASPD and evasion"
+        }
+    },
+    "Gunslinger/Rebel": {
+        "main": "DEX", "secondary": ["AGI", "STR"], "tertiary": ["LUK"], 
+        "description": "DEX for gun damage/HIT, AGI for ASPD, STR for damage",
+        "build_types": ["Pure DEX", "DEX-AGI ASPD", "DEX-STR Hybrid"],
+        "advanced_mechanics": {
+            "dex_mechanics": "Primary gun damage and accuracy",
+            "agi_mechanics": "ASPD for rapid fire",
+            "str_mechanics": "Additional damage boost"
+        }
+    },
+    "Super Novice/Hyper Novice": {
+        "main": "ALL", "secondary": ["ALL"], "tertiary": ["ALL"], 
+        "description": "Can use all stats - very flexible builds",
+        "build_types": ["Balanced All Stats", "Specialized Single Stat", "Custom Build"],
+        "advanced_mechanics": {
+            "flexibility": "Can copy any class build pattern",
+            "versatility": "All stats contribute to different aspects",
+            "customization": "Build depends on chosen skill focus"
+        }
+    },
+    "Doram (Summoner)": {
+        "main": "INT", "secondary": ["DEX", "VIT"], "tertiary": ["AGI"], 
+        "description": "INT for magic/healing, DEX for cast time, VIT for survival",
+        "build_types": ["Pure INT Magic", "INT-DEX Support", "Physical Doram"],
+        "advanced_mechanics": {
+            "int_mechanics": "Magic damage and healing power",
+            "dex_mechanics": "Cast time reduction",
+            "vit_mechanics": "Survivability and some skill scaling"
+        }
+    }
+}
+
 # Class selection
 st.sidebar.markdown("### 🎭 Character Setup")
-character_class = st.sidebar.selectbox("Select Class Type", [
-    "Knight/Lord Knight/Rune Knight", 
-    "Assassin/Assassin Cross/Guillotine Cross",
-    "Hunter/Sniper/Ranger", 
-    "Priest/High Priest/Archbishop",
-    "Wizard/High Wizard/Warlock/Sorcerer",
-    "Blacksmith/Whitesmith/Mechanic",
-    "Crusader/Paladin/Royal Guard",
-    "Rogue/Stalker/Shadow Chaser",
-    "Monk/Champion/Shura/Sura",
-    "Bard-Dancer/Clown-Gypsy/Minstrel-Wanderer",
-    "Taekwon/Star Gladiator/Soul Linker",
-    "Ninja/Kagerou/Oboro",
-    "Gunslinger/Rebel",
-    "Super Novice/Hyper Novice",
-    "Doram (Summoner)"
-])
+character_class = st.sidebar.selectbox("Select Class Type", list(class_stats.keys()))
+
+# Display class stat information
+if character_class in class_stats:
+    class_info = class_stats[character_class]
+    st.sidebar.markdown("#### 📊 Stat Priority")
+    st.sidebar.info(f"**Main:** {class_info['main']}")
+    st.sidebar.info(f"**Secondary:** {', '.join(class_info['secondary'])}")
+    st.sidebar.info(f"**Description:** {class_info['description']}")
+    
+    # Build type selector
+    selected_build = st.sidebar.selectbox("Build Type", class_info['build_types'])
+    st.sidebar.markdown(f"*Selected: {selected_build}*")
 
 damage_type = st.sidebar.selectbox("Damage Type", ["Physical Damage", "Magic Damage"])
 
@@ -86,34 +343,208 @@ with tab1:
     with col1:
         st.markdown("#### 📊 Character Stats")
         
+        # Get class stat requirements
+        class_info = class_stats[character_class]
+        
+        st.markdown(f"**{character_class}** - *{selected_build}*")
+        st.markdown(f"📋 {class_info['description']}")
+        
         if damage_type == "Physical Damage":
-            # Determine main stat based on class
-            if "Knight" in character_class or "Crusader" in character_class or "Monk" in character_class:
-                main_stat_name = "STR"
-                main_stat = st.number_input("STR (Main)", min_value=1, max_value=200, value=120)
-            elif "Hunter" in character_class or "Bard" in character_class or "Dancer" in character_class:
-                main_stat_name = "DEX" 
-                main_stat = st.number_input("DEX (Main)", min_value=1, max_value=200, value=120)
-            elif "Assassin" in character_class or "Rogue" in character_class:
-                main_stat_name = "AGI"
-                main_stat = st.number_input("AGI (Main)", min_value=1, max_value=200, value=120)
-            else:
-                main_stat_name = "STR/DEX"
-                main_stat = st.number_input("Main Stat", min_value=1, max_value=200, value=120)
+            # Smart stat input based on class
+            if class_info['main'] == "ALL":
+                # Super Novice - show all stats equally
+                str_stat = st.number_input("STR", min_value=1, max_value=200, value=80, help="Physical attack power")
+                agi_stat = st.number_input("AGI", min_value=1, max_value=200, value=80, help="Attack speed, flee")
+                vit_stat = st.number_input("VIT", min_value=1, max_value=200, value=80, help="HP, defense")
+                int_stat = st.number_input("INT", min_value=1, max_value=200, value=80, help="SP, magic attack")
+                dex_stat = st.number_input("DEX", min_value=1, max_value=200, value=80, help="Accuracy, cast time")
+                luk_stat = st.number_input("LUK", min_value=1, max_value=200, value=80, help="Critical, status resist")
                 
-            # Secondary stats
-            secondary_stat = st.number_input("Secondary Stat", min_value=1, max_value=200, value=80)
-            luk_stat = st.number_input("LUK", min_value=1, max_value=200, value=30)
-            
+                # For calculation, determine effective main stat
+                if "STR" in selected_build:
+                    main_stat, main_stat_name = str_stat, "STR"
+                elif "DEX" in selected_build:
+                    main_stat, main_stat_name = dex_stat, "DEX"
+                elif "AGI" in selected_build:
+                    main_stat, main_stat_name = agi_stat, "AGI"
+                else:
+                    main_stat, main_stat_name = str_stat, "STR"  # Default
+                    
+                secondary_stat = (agi_stat + dex_stat + vit_stat) // 3
+                
+            elif class_info['main'] == "STR" and "Mechanic" in character_class:
+                # Special handling for Mechanic - multi-stat dependency
+                st.markdown("**🔧 Mechanic: Multi-Stat Damage System**")
+                st.info("⚠️ Mechanic uses STR+DEX+AGI+LUK all contributing to damage through different mechanics!")
+                
+                main_stat = st.number_input(f"⭐ STR (Base Damage)", min_value=1, max_value=200, value=120, 
+                                          help="Primary physical damage stat")
+                main_stat_name = "STR"
+                
+                # DEX with rune mechanics
+                dex_stat = st.number_input("🎯 DEX (Rune ATK)", min_value=1, max_value=200, value=80,
+                                         help="DEX Runes: Every 10 DEX adds ATK based on rune level")
+                dex_rune_level = st.number_input("DEX Rune Level", min_value=0, max_value=15, value=5,
+                                               help="Higher rune level = more ATK per 10 DEX")
+                dex_atk_bonus = (dex_stat // 10) * (dex_rune_level * 2)  # Approximation
+                
+                # AGI with memory mechanics  
+                agi_stat = st.number_input("⚡ AGI (Memory/ASPD)", min_value=1, max_value=200, value=80,
+                                         help="ASPD Memory: 360 ASPD = +3% Penetration")
+                total_aspd = st.number_input("Total ASPD", min_value=180, max_value=400, value=300,
+                                           help="Your current ASPD including equipment")
+                
+                # Calculate ASPD memory bonus
+                if total_aspd >= 360:
+                    aspd_pen_bonus = 3.0  # 3% penetration at 360 ASPD
+                elif total_aspd >= 340:
+                    aspd_pen_bonus = 2.0  # Scaled bonus
+                elif total_aspd >= 320:
+                    aspd_pen_bonus = 1.0
+                else:
+                    aspd_pen_bonus = 0.0
+                
+                # LUK with rune mechanics
+                luk_stat = st.number_input("🍀 LUK (Rune ATK)", min_value=1, max_value=200, value=80,
+                                         help="LUK Runes: Every 10 LUK adds ATK based on rune level")
+                luk_rune_level = st.number_input("LUK Rune Level", min_value=0, max_value=15, value=5,
+                                               help="Higher rune level = more ATK per 10 LUK")
+                luk_atk_bonus = (luk_stat // 10) * (luk_rune_level * 2)  # Approximation
+                
+                # Other stats
+                vit_stat = st.number_input("VIT", min_value=1, max_value=200, value=50)
+                int_stat = st.number_input("INT", min_value=1, max_value=200, value=30)
+                
+                # Calculate total stat bonuses
+                rune_atk_bonus = dex_atk_bonus + luk_atk_bonus
+                secondary_stat = max(dex_stat, agi_stat, luk_stat)
+                
+                # Display Mechanic bonuses
+                st.markdown("#### 🔧 Mechanic Stat Bonuses")
+                col_a, col_b, col_c = st.columns(3)
+                with col_a:
+                    st.metric("DEX Rune ATK", f"+{dex_atk_bonus}")
+                    st.metric("LUK Rune ATK", f"+{luk_atk_bonus}")
+                with col_b:
+                    st.metric("Total Rune ATK", f"+{rune_atk_bonus}")
+                    st.metric("ASPD Penetration", f"+{aspd_pen_bonus}%")
+                with col_c:
+                    if aspd_pen_bonus >= 3:
+                        st.success("✅ Max ASPD Memory!")
+                    else:
+                        st.warning(f"⚠️ Need {360-total_aspd} more ASPD for max bonus")
+                
+            elif class_info['main'] == "STR":
+                main_stat = st.number_input(f"⭐ STR (Main)", min_value=1, max_value=200, value=120, 
+                                          help="Primary damage stat for this class")
+                main_stat_name = "STR"
+                
+                # Show secondary stats based on class
+                if "VIT" in class_info['secondary']:
+                    vit_stat = st.number_input("🛡️ VIT (Secondary)", min_value=1, max_value=200, value=80,
+                                             help="HP, physical defense")
+                else:
+                    vit_stat = st.number_input("VIT", min_value=1, max_value=200, value=50)
+                    
+                if "DEX" in class_info['secondary']:
+                    dex_stat = st.number_input("🎯 DEX (Secondary)", min_value=1, max_value=200, value=80,
+                                             help="Accuracy, cast time reduction")
+                else:
+                    dex_stat = st.number_input("DEX", min_value=1, max_value=200, value=50)
+                    
+                if "AGI" in class_info['secondary']:
+                    agi_stat = st.number_input("⚡ AGI (Secondary)", min_value=1, max_value=200, value=80,
+                                             help="Attack speed, flee")
+                else:
+                    agi_stat = st.number_input("AGI", min_value=1, max_value=200, value=50)
+                    
+                # Always show INT and LUK
+                int_stat = st.number_input("INT", min_value=1, max_value=200, value=30)
+                luk_stat = st.number_input("LUK", min_value=1, max_value=200, value=30)
+                
+                secondary_stat = max(vit_stat, dex_stat, agi_stat)
+                rune_atk_bonus = 0  # Default for non-Mechanic classes
+                
+            elif class_info['main'] == "DEX":
+                main_stat = st.number_input(f"⭐ DEX (Main)", min_value=1, max_value=200, value=120,
+                                          help="Primary damage stat for ranged classes")
+                main_stat_name = "DEX"
+                
+                if "AGI" in class_info['secondary']:
+                    agi_stat = st.number_input("⚡ AGI (Secondary)", min_value=1, max_value=200, value=80,
+                                             help="Attack speed for bow users")
+                else:
+                    agi_stat = st.number_input("AGI", min_value=1, max_value=200, value=50)
+                    
+                if "INT" in class_info['secondary']:
+                    int_stat = st.number_input("🔮 INT (Secondary)", min_value=1, max_value=200, value=80,
+                                             help="SP, some skills require INT")
+                else:
+                    int_stat = st.number_input("INT", min_value=1, max_value=200, value=30)
+                    
+                str_stat = st.number_input("STR", min_value=1, max_value=200, value=50)
+                vit_stat = st.number_input("VIT", min_value=1, max_value=200, value=50)
+                luk_stat = st.number_input("LUK", min_value=1, max_value=200, value=30)
+                
+                secondary_stat = max(agi_stat, int_stat)
+                
+            elif class_info['main'] == "AGI":
+                main_stat = st.number_input(f"⭐ AGI (Main)", min_value=1, max_value=200, value=120,
+                                          help="Primary stat for critical/ASPD builds")
+                main_stat_name = "AGI"
+                
+                if "STR" in class_info['secondary']:
+                    str_stat = st.number_input("⚔️ STR (Secondary)", min_value=1, max_value=200, value=80,
+                                             help="Physical damage boost")
+                else:
+                    str_stat = st.number_input("STR", min_value=1, max_value=200, value=50)
+                    
+                if "LUK" in class_info['secondary']:
+                    luk_stat = st.number_input("🍀 LUK (Secondary)", min_value=1, max_value=200, value=80,
+                                             help="Critical rate, perfect dodge")
+                else:
+                    luk_stat = st.number_input("LUK", min_value=1, max_value=200, value=30)
+                    
+                dex_stat = st.number_input("DEX", min_value=1, max_value=200, value=50)
+                vit_stat = st.number_input("VIT", min_value=1, max_value=200, value=50)
+                int_stat = st.number_input("INT", min_value=1, max_value=200, value=30)
+                
+                secondary_stat = max(str_stat, luk_stat)
+                
+            else:
+                # Fallback for other main stats
+                main_stat = st.number_input(f"⭐ {class_info['main']} (Main)", min_value=1, max_value=200, value=120)
+                main_stat_name = class_info['main']
+                secondary_stat = st.number_input("Secondary Stat", min_value=1, max_value=200, value=80)
+                luk_stat = st.number_input("LUK", min_value=1, max_value=200, value=30)
+                
             # Attack values
             total_atk = st.number_input("Total ATK", min_value=0, value=3000, help="Your total ATK shown in status window")
             weapon_atk = st.number_input("Weapon ATK", min_value=0, value=1200, help="Base weapon attack")
             
         else:  # Magic Damage
+            main_stat = st.number_input(f"⭐ INT (Main)", min_value=1, max_value=200, value=120,
+                                      help="Primary magic damage stat")
             main_stat_name = "INT"
-            main_stat = st.number_input("INT (Main)", min_value=1, max_value=200, value=120)
-            secondary_stat = st.number_input("DEX", min_value=1, max_value=200, value=80)
+            
+            if "DEX" in class_info['secondary']:
+                dex_stat = st.number_input("🎯 DEX (Secondary)", min_value=1, max_value=200, value=80,
+                                         help="Cast time reduction")
+            else:
+                dex_stat = st.number_input("DEX", min_value=1, max_value=200, value=50)
+                
+            if "VIT" in class_info['secondary']:
+                vit_stat = st.number_input("🛡️ VIT (Secondary)", min_value=1, max_value=200, value=80,
+                                         help="Survivability for casters")
+            else:
+                vit_stat = st.number_input("VIT", min_value=1, max_value=200, value=50)
+                
+            # Other stats
+            str_stat = st.number_input("STR", min_value=1, max_value=200, value=30)
+            agi_stat = st.number_input("AGI", min_value=1, max_value=200, value=30)
             luk_stat = st.number_input("LUK", min_value=1, max_value=200, value=30)
+            
+            secondary_stat = max(dex_stat, vit_stat)
             
             total_matk = st.number_input("Total MATK", min_value=0, value=2500, help="Your total MATK shown in status window")
             weapon_matk = st.number_input("Weapon MATK", min_value=0, value=800, help="Base weapon magic attack")
@@ -121,6 +552,18 @@ with tab1:
         # Common stats
         base_level = st.number_input("Base Level", min_value=1, max_value=200, value=140)
         job_level = st.number_input("Job Level", min_value=1, max_value=70, value=60)
+        
+        # Show stat analysis
+        if st.button("📊 Analyze Stat Distribution"):
+            total_stats = str_stat + agi_stat + vit_stat + int_stat + dex_stat + luk_stat if 'str_stat' in locals() else main_stat + secondary_stat + luk_stat
+            
+            st.info(f"""
+            **Stat Analysis for {selected_build}:**
+            - Main Stat ({main_stat_name}): {main_stat} ({main_stat/total_stats*100:.1f}%)
+            - Secondary Stats: {secondary_stat} 
+            - Build Efficiency: {"✅ Optimized" if main_stat >= secondary_stat * 1.5 else "⚠️ Consider more main stat"}
+            - Recommended for: {class_info['description']}
+            """)
         
     with col2:
         st.markdown("#### ⚔️ Equipment & Modifiers")
@@ -138,9 +581,101 @@ with tab1:
             ignore_mdef_general = st.number_input("Ignore MDEF (%)", min_value=0.0, max_value=100.0, value=20.0, step=1.0)
             ignore_mdef_equip = st.number_input("Ignore Equip MDEF (%)", min_value=0.0, max_value=100.0, value=15.0, step=1.0)
         
-        # Universal modifiers
-        damage_increase = st.number_input("Damage Increase (%)", min_value=0.0, max_value=300.0, value=80.0, step=5.0, 
-                                        help="Final damage increase from gear/cards/runes")
+        # Equipment Memory System
+        equipment_memory_bonus = 0
+        if st.checkbox("🧠 Include Equipment Memory System", help="New system from Ghost Palace - adds significant ATK/MATK bonuses"):
+            st.markdown("#### 🧠 Equipment Memory Configuration")
+            
+            col_mem1, col_mem2 = st.columns(2)
+            
+            with col_mem1:
+                st.markdown("**Memory Quality & Levels**")
+                # Equipment Memory slots (6 total: Weapon, Armor, Cloak, Boots, Accessory 1, Accessory 2)
+                memory_slots = ["Weapon", "Armor", "Cloak", "Boots", "Accessory 1", "Accessory 2"]
+                
+                total_memory_atk = 0
+                total_memory_matk = 0
+                
+                for slot in memory_slots:
+                    memory_quality = st.selectbox(f"{slot} Memory", 
+                        [("None", 0), ("Green", 1), ("Blue", 2), ("Purple", 3)], 
+                        index=0, format_func=lambda x: x[0], key=f"mem_{slot}")
+                    
+                    if memory_quality[1] > 0:
+                        max_level = {1: 10, 2: 20, 3: 30}[memory_quality[1]]  # Green: 10, Blue: 20, Purple: 30
+                        memory_level = st.number_input(f"{slot} Level", min_value=1, max_value=max_level, 
+                                                     value=min(10, max_level), key=f"level_{slot}")
+                        
+                        # Calculate memory bonuses (approximation based on guides)
+                        if damage_type == "Physical Damage":
+                            # Physical ATK bonus from memory
+                            if memory_quality[1] == 3:  # Purple
+                                slot_atk_bonus = memory_level * 15  # ~15 ATK per level for purple
+                            elif memory_quality[1] == 2:  # Blue  
+                                slot_atk_bonus = memory_level * 10  # ~10 ATK per level for blue
+                            else:  # Green
+                                slot_atk_bonus = memory_level * 5   # ~5 ATK per level for green
+                        else:
+                            # Magic ATK bonus from memory
+                            if memory_quality[1] == 3:  # Purple
+                                slot_atk_bonus = memory_level * 12  # ~12 MATK per level for purple
+                            elif memory_quality[1] == 2:  # Blue
+                                slot_atk_bonus = memory_level * 8   # ~8 MATK per level for blue  
+                            else:  # Green
+                                slot_atk_bonus = memory_level * 4   # ~4 MATK per level for green
+                        
+                        total_memory_atk += slot_atk_bonus
+                        
+                        # Display individual memory bonus
+                        st.text(f"└ +{slot_atk_bonus} {'ATK' if damage_type == 'Physical Damage' else 'MATK'}")
+            
+            with col_mem2:
+                st.markdown("**Memory Special Attributes**")
+                
+                # Special attributes unlocked at certain levels
+                memory_special_atk_percent = st.number_input("ATK/MATK % from Special Lines", 
+                    min_value=0.0, max_value=50.0, value=0.0, step=1.0,
+                    help="Special attributes from Lv.10+ purple memories")
+                
+                memory_damage_increase = st.number_input("Damage Increase % from Memory", 
+                    min_value=0.0, max_value=30.0, value=0.0, step=1.0,
+                    help="Damage increase special attributes")
+                
+                memory_penetration = st.number_input("Penetration % from Memory", 
+                    min_value=0.0, max_value=20.0, value=0.0, step=1.0,
+                    help="Ignore DEF from special attributes")
+                
+                # Add memory bonuses to existing modifiers
+                if damage_type == "Physical Damage":
+                    atk_percent += memory_special_atk_percent
+                    total_atk += total_memory_atk
+                    ignore_def_general += memory_penetration
+                else:
+                    matk_percent += memory_special_atk_percent
+                    total_matk += total_memory_atk
+                    ignore_mdef_general += memory_penetration
+                    
+                damage_increase += memory_damage_increase
+                
+                # Display total memory bonuses
+                st.success(f"""
+                **Total Memory Bonuses:**
+                - +{total_memory_atk} {'ATK' if damage_type == 'Physical Damage' else 'MATK'} (Base)
+                - +{memory_special_atk_percent}% {'ATK' if damage_type == 'Physical Damage' else 'MATK'} (Special)
+                - +{memory_damage_increase}% Damage Increase
+                - +{memory_penetration}% Penetration
+                """)
+                
+                # Memory upgrade recommendations
+                st.info("""
+                **💡 Memory Tips:**
+                - Focus on 3x Purple Lv.10 first (unlocks special attributes)
+                - Then upgrade to Lv.30 one by one
+                - Green/Blue memories refund only 80% when decomposed
+                - Weekly Ghost Palace = ~30 Memory Afterglow
+                """)
+        else:
+            total_memory_atk = 0
         
         # Skill specific
         skill_multiplier = st.number_input("Skill Multiplier (%)", min_value=100.0, max_value=5000.0, value=500.0, step=50.0,
@@ -200,10 +735,24 @@ with tab1:
         if damage_type == "Physical Damage":
             # =================== PHYSICAL DAMAGE CALCULATION ===================
             
-            # Step 1: Base ATK calculation
-            stat_atk = main_stat * 2 + secondary_stat + int(luk_stat/3)  # Simplified stat contribution
-            base_atk = weapon_atk + stat_atk
-            total_atk_with_percent = total_atk * (1 + atk_percent / 100)
+            # Step 1: Base ATK calculation with advanced mechanics
+            if "Mechanic" in character_class:
+                # Mechanic special calculation
+                stat_atk = main_stat * 2 + secondary_stat + int(luk_stat/3)
+                base_atk = weapon_atk + stat_atk + rune_atk_bonus  # Add rune bonuses
+                total_atk_with_percent = total_atk * (1 + atk_percent / 100)
+                
+                # Add ASPD memory penetration bonus
+                ignore_def_general += aspd_pen_bonus
+                
+                st.info(f"🔧 **Mechanic Bonuses Applied:** +{rune_atk_bonus} ATK from runes, +{aspd_pen_bonus}% penetration from ASPD memory")
+                
+            else:
+                # Standard calculation for other classes
+                stat_atk = main_stat * 2 + secondary_stat + int(luk_stat/3)
+                base_atk = weapon_atk + stat_atk
+                total_atk_with_percent = total_atk * (1 + atk_percent / 100)
+                rune_atk_bonus = 0  # Ensure it's defined for other classes
             
             # Step 2: Skill damage
             skill_damage = total_atk_with_percent * (skill_multiplier / 100)
@@ -249,11 +798,21 @@ with tab1:
                 st.metric("Base ATK", f"{base_atk:,.0f}")
                 st.metric("Total ATK", f"{total_atk:,.0f}")
                 st.metric("ATK with %", f"{total_atk_with_percent:,.0f}")
+                if "Mechanic" in character_class:
+                    st.metric("Rune ATK Bonus", f"+{rune_atk_bonus:,.0f}")
+                    st.metric("Memory ATK Bonus", f"+{total_memory_atk:,.0f}")
+                else:
+                    st.metric("Memory ATK Bonus", f"+{total_memory_atk:,.0f}")
                 
             with col2:
                 st.metric("Skill Damage", f"{skill_damage:,.0f}")
                 st.metric("After Size Mod", f"{size_modified_damage:,.0f}")
                 st.metric("After Element", f"{element_modified_damage:,.0f}")
+                if "Mechanic" in character_class:
+                    st.metric("ASPD Memory Pen", f"+{aspd_pen_bonus}%")
+                    st.metric("Total Memory Bonus", f"+{total_memory_atk:,.0f}")
+                else:
+                    st.metric("Memory Bonus", f"+{total_memory_atk:,.0f}")
                 
             with col3:
                 st.metric("Ignore DEF Total", f"{ignore_def_total:.1%}")
@@ -557,54 +1116,77 @@ with st.expander("🎭 Class-Specific Optimization Tips"):
     st.markdown("""
     ### Physical Classes:
     **Knights/Crusaders/Paladins:**
-    - Prioritize STR for ATK
-    - VIT for survivability  
-    - Two-handed weapons for higher damage
-    - Size modifier crucial for weapon choice
+    - 🥇 **STR** primary for ATK damage
+    - 🥈 **VIT** secondary for HP/DEF (tanking)
+    - 🥉 **DEX** tertiary for accuracy
+    - Builds: Pure STR DPS | STR-VIT Tank | STR-DEX Hybrid
     
     **Assassins/Rogues:**
-    - High AGI for ASPD and Crit
-    - Dual wield has ATK penalty but double hits
-    - Critical builds benefit from LUK
-    - Sonic Blow ignores flee
+    - 🥇 **AGI** primary for ASPD/Critical
+    - 🥈 **STR** secondary for base damage  
+    - 🥉 **LUK** tertiary for critical rate
+    - Builds: AGI-Critical | AGI-STR Hybrid | Pure Critical (LUK)
     
     **Hunters/Rangers:**
-    - DEX primary stat for ATK and HIT
-    - Arrow type affects damage
-    - Size modifiers important for bow weapons
-    - Traps for utility
+    - 🥇 **DEX** primary for bow damage/accuracy
+    - 🥈 **AGI** secondary for attack speed
+    - 🥉 **INT** tertiary for SP/traps
+    - Builds: Pure DEX ADL | DEX-AGI ASPD | DEX-INT Trapper
     
     **Monks/Champions:**
-    - STR for damage
-    - Spirit spheres enhance skills
-    - Combo skills for maximum damage
-    - Asura Strike = massive single hit
+    - 🥇 **STR** primary for damage
+    - 🥈 **AGI** secondary for combo speed
+    - 🥉 **VIT** tertiary for HP/survivability
+    - Builds: Pure STR Asura | STR-AGI Combo | STR-VIT Tanky
+    
+    **Blacksmiths/Mechanics:**
+    - 🥇 **STR** primary for weapon skills
+    - 🥈 **DEX** secondary for accuracy/crafting
+    - 🥉 **VIT** tertiary for survival
+    - Builds: Pure STR DPS | STR-DEX Smith | STR-VIT Tanky
     
     ### Magic Classes:
     **Wizards/Warlocks/Sorcerers:**
-    - INT primary for MATK
-    - DEX for cast time reduction
-    - Element mastery crucial
-    - Area spells for farming
+    - 🥇 **INT** primary for magic damage/SP
+    - 🥈 **DEX** secondary for cast time reduction
+    - 🥉 **VIT** tertiary for survivability
+    - Builds: Pure INT Glass Cannon | INT-DEX Fast Cast | INT-VIT Survivor
     
     **Priests/Archbishops:**
-    - INT for healing and damage
-    - Turn Undead vs undead monsters
-    - Support skills for party play
-    - Magnus Exorcismus vs undead/demon
+    - 🥇 **INT** primary for healing power/magic damage
+    - 🥈 **DEX** secondary for instant cast
+    - 🥉 **VIT** tertiary for survival
+    - Builds: Pure INT Battle | INT-DEX Support | INT-VIT Tank
     
-    ### Hybrid Classes:
-    **Blacksmiths/Mechanics:**
-    - STR for physical skills
-    - Arm Cannon ignores flee
-    - Power Swing enhances next attack
-    - Equipment mastery important
-    
+    ### Hybrid/Special Classes:
     **Bards/Dancers:**
-    - DEX for bow skills
-    - Support songs/dances
-    - Arrow Vulcan for damage
-    - Party utility focus
+    - 🥇 **DEX** primary for bow skills
+    - 🥈 **AGI** secondary for attack speed
+    - 🥉 **INT** tertiary for SP/songs
+    - Builds: DEX-AGI ADL | Pure DEX | INT Support
+    
+    **Gunslingers/Rebels:**
+    - 🥇 **DEX** primary for gun damage
+    - 🥈 **AGI** secondary for attack speed  
+    - 🥉 **STR** tertiary for damage boost
+    - Builds: Pure DEX | DEX-AGI ASPD | DEX-STR Hybrid
+    
+    **Super Novice:**
+    - 🌟 **Flexible** - can use any stat combination
+    - All stats viable depending on chosen role
+    - Builds: Balanced All Stats | Specialized Single Stat | Custom Build
+    
+    **Ninja:**
+    - 🥇 **STR** primary for physical skills
+    - 🥈 **INT** secondary for magic skills
+    - 🥉 **AGI** tertiary for speed
+    - Builds: STR Physical | INT Magic | Hybrid STR-INT
+    
+    **Doram (Summoner):**
+    - 🥇 **INT** primary for magic/healing
+    - 🥈 **DEX** secondary for cast time
+    - 🥉 **VIT** tertiary for survival  
+    - Builds: Pure INT Magic | INT-DEX Support | Physical Doram
     """)
 
 # Advanced formulas
